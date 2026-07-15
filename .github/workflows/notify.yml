@@ -18,6 +18,9 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
@@ -33,7 +36,9 @@ jobs:
         run: |
           git config user.name github-actions
           git config user.email github-actions@github.com
+          git fetch origin main
+          git checkout -B main origin/main
           git add state.json
           git diff --cached --quiet || git commit -m "update state"
           git pull --rebase origin main
-          git push
+          git push origin HEAD:main
