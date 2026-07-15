@@ -33,12 +33,35 @@ jobs:
           DISCORD_WEBHOOK: ${{ secrets.DISCORD_WEBHOOK }}
 
       - name: Commit state
+        shell: bash
         run: |
+          set -euo pipefail
+
           git config user.name github-actions
           git config user.email github-actions@github.com
-          git fetch origin main
-          git checkout -B main origin/main
-          git add state.json
-          git diff --cached --quiet || git commit -m "update state"
-          git pull --rebase origin main
-          git push origin HEAD:main
+
+          for attempt in 1 2 3; do
+            git fetch origin main
+            git checkout -B main origin/main
+
+            git add state.json
+            if git diff --cached --quiet; then
+              echo "No state changes to commit."
+              exit 0
+            fi
+
+            git commit -m "update state"
+
+            if git pull --rebase origin main; then
+              if git push origin HEAD:main; then
+                exit 0
+              fi
+            else
+              git rebase --abort || true
+            fi
+
+            echo "Push failed on attempt ${attempt}; retrying..."
+          done
+
+          echo "Unable to push updated state after retries."
+          exit 1
